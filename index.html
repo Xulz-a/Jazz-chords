@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Jazz Chords</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: #111;
+  color: #f0f0f0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+#safari-warning {
+  display: none;
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  background: #f0a500;
+  color: #000;
+  text-align: center;
+  padding: 12px 16px;
+  font-size: 14px;
+  font-weight: 600;
+  z-index: 999;
+}
+
+.container {
+  width: 100%;
+  max-width: 480px;
+  text-align: center;
+}
+
+.title {
+  font-size: 12px;
+  font-weight: 500;
+  color: #555;
+  letter-spacing: 4px;
+  text-transform: uppercase;
+  margin-bottom: 56px;
+}
+
+#chord-root {
+  font-size: 108px;
+  font-weight: 800;
+  line-height: 1;
+  color: #fff;
+  letter-spacing: -4px;
+}
+
+#chord-suffix {
+  font-size: 50px;
+  font-weight: 600;
+  color: #f0a500;
+  min-height: 62px;
+  margin-bottom: 6px;
+}
+
+#chord-label {
+  font-size: 15px;
+  color: #555;
+  letter-spacing: 1px;
+  min-height: 22px;
+  margin-bottom: 40px;
+}
+
+#notes-display {
+  font-size: 26px;
+  color: #4fc3f7;
+  letter-spacing: 3px;
+  font-weight: 600;
+  min-height: 38px;
+  margin-bottom: 40px;
+  visibility: hidden;
+}
+
+#notes-display.show {
+  visibility: visible;
+}
+
+.btn {
+  display: block;
+  width: 100%;
+  padding: 22px 16px;
+  border: none;
+  border-radius: 18px;
+  font-size: 19px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-bottom: 14px;
+  font-family: inherit;
+  -webkit-appearance: none;
+  appearance: none;
+  outline: none;
+}
+
+#btn-reveal {
+  background: #1c1c1e;
+  color: #4fc3f7;
+  border: 2px solid #4fc3f7;
+}
+
+#btn-next {
+  background: #f0a500;
+  color: #000;
+}
+
+.filter-section {
+  margin-top: 28px;
+  padding-top: 22px;
+  border-top: 1px solid #222;
+}
+
+.filter-title {
+  font-size: 11px;
+  color: #444;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  margin-bottom: 12px;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+}
+
+.chip {
+  padding: 8px 14px;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  border: 2px solid #333;
+  background: transparent;
+  color: #666;
+  font-family: inherit;
+  -webkit-appearance: none;
+  appearance: none;
+  outline: none;
+}
+
+.chip.on {
+  background: #1e1e1e;
+  border-color: #f0a500;
+  color: #f0a500;
+}
+
+#counter {
+  margin-top: 24px;
+  font-size: 13px;
+  color: #333;
+  letter-spacing: 1px;
+}
+</style>
+</head>
+<body>
+
+<div id="safari-warning">
+  Abre este archivo en Safari para que funcione correctamente &rarr; Compartir &rarr; Abrir en Safari
+</div>
+
+<div class="container">
+  <div class="title">Jazz Chords</div>
+
+  <div id="chord-root">—</div>
+  <div id="chord-suffix"></div>
+  <div id="chord-label"></div>
+
+  <div id="notes-display"></div>
+
+  <button class="btn" id="btn-reveal">Ver notas</button>
+  <button class="btn" id="btn-next">Siguiente acorde →</button>
+
+  <div class="filter-section">
+    <div class="filter-title">Tipos activos</div>
+    <div class="chips" id="chips"></div>
+  </div>
+
+  <div id="counter">Toca "Siguiente acorde" para empezar</div>
+</div>
+
+<script>
+(function () {
+  var ROOTS = ['C','C#','D','Eb','E','F','F#','G','Ab','A','Bb','B'];
+
+  var TYPES = [
+    { id:'maj7',  sym:'maj7',  lbl:'Major 7th',           iv:[0,4,7,11] },
+    { id:'m7',    sym:'m7',    lbl:'Minor 7th',            iv:[0,3,7,10] },
+    { id:'dom7',  sym:'7',     lbl:'Dominant 7th',         iv:[0,4,7,10] },
+    { id:'m7b5',  sym:'m7b5',  lbl:'Half Diminished (ø7)', iv:[0,3,6,10] },
+    { id:'dim7',  sym:'dim7',  lbl:'Diminished 7th',       iv:[0,3,6,9]  },
+  ];
+
+  var enabled = { maj7:true, m7:true, dom7:true, m7b5:true, dim7:true };
+  var notesShown = false;
+  var current = null;
+  var count = 0;
+
+  function $(id) { return document.getElementById(id); }
+
+  function nextChord() {
+    var pool = TYPES.filter(function(t){ return enabled[t.id]; });
+    var type = pool[Math.floor(Math.random() * pool.length)];
+    var ri = Math.floor(Math.random() * 12);
+    var chordNotes = type.iv.map(function(i){ return ROOTS[(ri + i) % 12]; });
+
+    current = { root: ROOTS[ri], suffix: type.sym, label: type.lbl, notes: chordNotes };
+    count++;
+
+    notesShown = false;
+    $('notes-display').textContent = chordNotes.join('  ·  ');
+    $('notes-display').className = '';
+    $('btn-reveal').textContent = 'Ver notas';
+
+    $('chord-root').textContent = current.root;
+    $('chord-suffix').textContent = current.suffix;
+    $('chord-label').textContent = current.label;
+    $('counter').textContent = 'Acorde #' + count;
+  }
+
+  function toggleNotes() {
+    if (!current) return;
+    notesShown = !notesShown;
+    $('notes-display').className = notesShown ? 'show' : '';
+    $('btn-reveal').textContent = notesShown ? 'Ocultar notas' : 'Ver notas';
+  }
+
+  function addTap(el, fn) {
+    el.addEventListener('touchend', function(e) {
+      e.preventDefault();
+      fn();
+    }, { passive: false });
+    el.addEventListener('click', fn);
+  }
+
+  addTap($('btn-next'), nextChord);
+  addTap($('btn-reveal'), toggleNotes);
+
+  // Build chips
+  var chipsEl = $('chips');
+  TYPES.forEach(function(type) {
+    var btn = document.createElement('button');
+    btn.className = 'chip on';
+    btn.textContent = type.sym;
+    addTap(btn, function() {
+      var active = Object.keys(enabled).filter(function(k){ return enabled[k]; });
+      if (enabled[type.id] && active.length === 1) return;
+      enabled[type.id] = !enabled[type.id];
+      btn.className = 'chip' + (enabled[type.id] ? ' on' : '');
+    });
+    chipsEl.appendChild(btn);
+  });
+
+  // Detect Quick Look (no real navigation object or limited JS env)
+  // Show warning if not opened in a proper browser
+  try {
+    if (typeof window.history === 'undefined' || !navigator.userAgent.match(/Safari/)) {
+      $('safari-warning').style.display = 'block';
+    }
+  } catch(e) {
+    $('safari-warning').style.display = 'block';
+  }
+
+  nextChord();
+})();
+</script>
+</body>
+</html>
