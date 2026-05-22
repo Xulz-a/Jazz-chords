@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Jazz Chords</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: #111;
+  color: #f0f0f0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 20px 40px;
+}
+.container { width: 100%; max-width: 480px; text-align: center; }
+
+.title {
+  font-size: 12px; font-weight: 500; color: #555;
+  letter-spacing: 4px; text-transform: uppercase; margin-bottom: 48px;
+}
+
+/* ─── Single chord display ─── */
+#single-display { margin-bottom: 4px; }
+#chord-root   { font-size: 108px; font-weight: 800; line-height: 1; color: #fff; letter-spacing: -4px; }
+#chord-suffix { font-size: 50px; font-weight: 600; color: #f0a500; min-height: 60px; }
+#chord-label  { font-size: 15px; color: #555; letter-spacing: 1px; min-height: 22px; }
+#inv-badge    { font-size: 14px; color: #4fc3f7; margin-top: 6px; min-height: 20px; }
+
+/* ─── Progression display ─── */
+#prog-display { display: none; margin-bottom: 4px; }
+#prog-row {
+  display: flex; align-items: flex-end; justify-content: center;
+  gap: 4px; flex-wrap: wrap; margin-bottom: 12px;
+}
+.prog-chord   { display: flex; flex-direction: column; align-items: center; gap: 3px; }
+.prog-degree  { font-size: 11px; color: #555; letter-spacing: 2px; text-transform: uppercase; }
+.prog-name    { font-size: 30px; font-weight: 700; color: #fff; }
+.prog-arrow   { font-size: 18px; color: #2e2e2e; margin-bottom: 10px; padding: 0 2px; }
+#prog-key     { font-size: 16px; color: #f0a500; letter-spacing: 0.5px; margin-bottom: 4px; }
+#inv-badge-prog { font-size: 13px; color: #4fc3f7; min-height: 18px; }
+
+/* ─── Notes ─── */
+#notes-wrap  { min-height: 80px; margin: 24px 0; display: flex; align-items: center; justify-content: center; }
+#notes-display {
+  font-size: 22px; color: #4fc3f7; letter-spacing: 2px; font-weight: 600;
+  white-space: pre-line; line-height: 1.7; visibility: hidden;
+}
+#notes-display.show      { visibility: visible; }
+#notes-display.prog-mode { font-size: 15px; letter-spacing: 1px; font-weight: 500; text-align: left; }
+
+/* ─── Action buttons ─── */
+.btn {
+  display: block; width: 100%; padding: 22px 16px;
+  border: none; border-radius: 18px; font-size: 19px; font-weight: 600;
+  cursor: pointer; margin-bottom: 14px; font-family: inherit;
+  -webkit-appearance: none; appearance: none; outline: none;
+}
+#btn-reveal { background: #1c1c1e; color: #4fc3f7; border: 2px solid #4fc3f7; }
+#btn-next   { background: #f0a500; color: #000; }
+
+/* ─── Filter panel ─── */
+.filters { margin-top: 28px; width: 100%; }
+.filter-section {
+  padding-top: 18px; border-top: 1px solid #1e1e1e; margin-top: 16px;
+}
+.filter-section:first-child { margin-top: 0; border-top: none; padding-top: 0; }
+.filter-title {
+  font-size: 11px; color: #3a3a3a; letter-spacing: 3px;
+  text-transform: uppercase; margin-bottom: 12px;
+}
+.chips { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+.chip {
+  padding: 8px 14px; border-radius: 20px; font-size: 14px; font-weight: 600;
+  cursor: pointer; border: 2px solid #2a2a2a; background: transparent; color: #555;
+  font-family: inherit; -webkit-appearance: none; appearance: none; outline: none;
+}
+.chip.on { background: #1e1e1e; border-color: #f0a500; color: #f0a500; }
+
+#counter { margin-top: 24px; font-size: 13px; color: #2a2a2a; letter-spacing: 1px; }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <div class="title">Jazz Chords</div>
+
+  <!-- Single chord -->
+  <div id="single-display">
+    <div id="chord-root">—</div>
+    <div id="chord-suffix"></div>
+    <div id="chord-label"></div>
+    <div id="inv-badge"></div>
+  </div>
+
+  <!-- Progression -->
+  <div id="prog-display">
+    <div id="prog-row"></div>
+    <div id="prog-key"></div>
+    <div id="inv-badge-prog"></div>
+  </div>
+
+  <!-- Notes (hidden until tapped) -->
+  <div id="notes-wrap">
+    <div id="notes-display"></div>
+  </div>
+
+  <button class="btn" id="btn-reveal">Ver notas</button>
+  <button class="btn" id="btn-next">Siguiente →</button>
+
+  <!-- ─── Filters ─── -->
+  <div class="filters">
+
+    <!-- Modo -->
+    <div class="filter-section">
+      <div class="filter-title">Modo</div>
+      <div class="chips">
+        <button class="chip on" id="btn-single">Acordes sueltos</button>
+        <button class="chip"    id="btn-prog">Progresiones II-V-I</button>
+      </div>
+    </div>
+
+    <!-- Tipos de acorde (solo modo acorde) -->
+    <div class="filter-section" id="section-types">
+      <div class="filter-title">Tipos de acorde</div>
+      <div class="chips" id="chips-types"></div>
+    </div>
+
+    <!-- Tipo de progresión (solo modo progresión) -->
+    <div class="filter-section" id="section-prog-type" style="display:none">
+      <div class="filter-title">Tipo de progresión</div>
+      <div class="chips">
+        <button class="chip on" id="chip-major">Mayor</button>
+        <button class="chip on" id="chip-minor">Menor</button>
+      </div>
+    </div>
+
+    <!-- Inversiones (siempre visible) -->
+    <div class="filter-section">
+      <div class="filter-title">Inversiones</div>
+      <div class="chips" id="chips-inv"></div>
+    </div>
+
+  </div>
+
+  <div id="counter">Toca "Siguiente" para empezar</div>
+</div>
+
+<script>
+(function () {
+  var ROOTS = ['C','C#','D','Eb','E','F','F#','G','Ab','A','Bb','B'];
+
+  var TYPES = [
+    { id:'maj7', sym:'maj7', lbl:'Major 7th',            iv:[0,4,7,11] },
+    { id:'m7',   sym:'m7',   lbl:'Minor 7th',             iv:[0,3,7,10] },
+    { id:'dom7', sym:'7',    lbl:'Dominant 7th',          iv:[0,4,7,10] },
+    { id:'m7b5', sym:'m7b5', lbl:'Half Diminished (ø7)',  iv:[0,3,6,10] },
+    { id:'dim7', sym:'dim7', lbl:'Diminished 7th',        iv:[0,3,6,9]  },
+  ];
+
+  var INV = [
+    { label:'Raíz', badge:'' },
+    { label:'1ª',   badge:'1ª inversión' },
+    { label:'2ª',   badge:'2ª inversión' },
+    { label:'3ª',   badge:'3ª inversión' },
+  ];
+
+  var PROG_MAJOR = {
+    label  : 'II − V − I mayor',
+    degrees: ['ii','V','I'],
+    types  : ['m7','dom7','maj7'],
+    roots  : [2, 7, 0],
+  };
+  var PROG_MINOR = {
+    label  : 'II − V − I menor',
+    degrees: ['iiø','V7','im7'],
+    types  : ['m7b5','dom7','m7'],
+    roots  : [2, 7, 0],
+  };
+
+  // ─── State ───
+  var typeEnabled = { maj7:true, m7:true, dom7:true, m7b5:true, dim7:true };
+  var invEnabled  = [true, false, false, false];
+  var progEnabled = { major:true, minor:true };
+  var progMode    = false;
+  var notesShown  = false;
+  var current     = null;
+  var count       = 0;
+
+  function $(id) { return document.getElementById(id); }
+  function getType(id) { return TYPES.find(function(t){ return t.id === id; }); }
+  function pickRandom(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+
+  function applyInversion(notes, n) {
+    var r = notes.slice();
+    for (var i = 0; i < n; i++) r.push(r.shift());
+    return r;
+  }
+
+  function pickInversion() {
+    var pool = [];
+    invEnabled.forEach(function(on, i){ if (on) pool.push(i); });
+    return pickRandom(pool);
+  }
+
+  function buildNotes(typeId, rootIdx) {
+    return getType(typeId).iv.map(function(i){ return ROOTS[(rootIdx + i) % 12]; });
+  }
+
+  // ─── Generate single chord ───
+  function generateSingle() {
+    var pool = TYPES.filter(function(t){ return typeEnabled[t.id]; });
+    var type = pickRandom(pool);
+    var ri   = Math.floor(Math.random() * 12);
+    var inv  = pickInversion();
+    var notes = applyInversion(buildNotes(type.id, ri), inv);
+
+    current = { mode:'single', notesText: notes.join('  ·  ') };
+
+    $('chord-root').textContent    = ROOTS[ri];
+    $('chord-suffix').textContent  = type.sym;
+    $('chord-label').textContent   = type.lbl;
+    $('inv-badge').textContent     = INV[inv].badge;
+    $('notes-display').textContent = current.notesText;
+    $('notes-display').className   = '';
+  }
+
+  // ─── Generate progression ───
+  function generateProg() {
+    var pool = [];
+    if (progEnabled.major) pool.push(PROG_MAJOR);
+    if (progEnabled.minor) pool.push(PROG_MINOR);
+    var prog = pickRandom(pool);
+    var ki   = Math.floor(Math.random() * 12);
+    var inv  = pickInversion();
+
+    var chords = prog.types.map(function(tid, idx) {
+      var ri    = (ki + prog.roots[idx]) % 12;
+      var notes = applyInversion(buildNotes(tid, ri), inv);
+      return { name: ROOTS[ri] + getType(tid).sym, degree: prog.degrees[idx], notes: notes };
+    });
+
+    current = {
+      mode: 'prog',
+      notesText: chords.map(function(c){ return c.name + ':  ' + c.notes.join(' · '); }).join('\n'),
+    };
+
+    // Build chord row
+    var row = $('prog-row');
+    row.innerHTML = '';
+    chords.forEach(function(c, i) {
+      if (i > 0) {
+        var a = document.createElement('span');
+        a.className = 'prog-arrow'; a.textContent = '→'; row.appendChild(a);
+      }
+      var s = document.createElement('span');
+      s.className = 'prog-chord';
+      s.innerHTML = '<span class="prog-degree">' + c.degree + '</span>'
+                  + '<span class="prog-name">'   + c.name   + '</span>';
+      row.appendChild(s);
+    });
+
+    $('prog-key').textContent      = prog.label + ' · ' + ROOTS[ki];
+    $('inv-badge-prog').textContent = INV[inv].badge;
+    $('notes-display').textContent = current.notesText;
+    $('notes-display').className   = 'prog-mode';
+  }
+
+  // ─── Next ───
+  function nextChord() {
+    count++;
+    notesShown = false;
+    $('btn-reveal').textContent = 'Ver notas';
+    progMode ? generateProg() : generateSingle();
+    $('counter').textContent = 'Acorde #' + count;
+  }
+
+  // ─── Toggle notes ───
+  function toggleNotes() {
+    if (!current) return;
+    notesShown = !notesShown;
+    var cls = current.mode === 'prog' ? 'prog-mode' : '';
+    $('notes-display').className = notesShown ? ('show ' + cls).trim() : cls;
+    $('btn-reveal').textContent  = notesShown ? 'Ocultar notas' : 'Ver notas';
+  }
+
+  // ─── Mode switch ───
+  function setMode(prog) {
+    progMode = prog;
+    $('single-display').style.display     = prog ? 'none'  : 'block';
+    $('prog-display').style.display       = prog ? 'block' : 'none';
+    $('section-types').style.display      = prog ? 'none'  : 'block';
+    $('section-prog-type').style.display  = prog ? 'block' : 'none';
+    $('btn-single').className = prog ? 'chip'    : 'chip on';
+    $('btn-prog').className   = prog ? 'chip on' : 'chip';
+    nextChord();
+  }
+
+  // ─── Tap helper ───
+  function addTap(el, fn) {
+    el.addEventListener('touchend', function(e){ e.preventDefault(); fn(); }, { passive:false });
+    el.addEventListener('click', fn);
+  }
+
+  // ─── Wire static buttons ───
+  addTap($('btn-next'),    nextChord);
+  addTap($('btn-reveal'),  toggleNotes);
+  addTap($('btn-single'),  function(){ if (progMode)  setMode(false); });
+  addTap($('btn-prog'),    function(){ if (!progMode) setMode(true);  });
+
+  addTap($('chip-major'), function() {
+    if (progEnabled.major && !progEnabled.minor) return;
+    progEnabled.major = !progEnabled.major;
+    $('chip-major').className = 'chip' + (progEnabled.major ? ' on' : '');
+  });
+  addTap($('chip-minor'), function() {
+    if (progEnabled.minor && !progEnabled.major) return;
+    progEnabled.minor = !progEnabled.minor;
+    $('chip-minor').className = 'chip' + (progEnabled.minor ? ' on' : '');
+  });
+
+  // ─── Build chord type chips ───
+  var typesEl = $('chips-types');
+  TYPES.forEach(function(type) {
+    var btn = document.createElement('button');
+    btn.className = 'chip on';
+    btn.textContent = type.sym;
+    addTap(btn, function() {
+      var active = Object.keys(typeEnabled).filter(function(k){ return typeEnabled[k]; });
+      if (typeEnabled[type.id] && active.length === 1) return;
+      typeEnabled[type.id] = !typeEnabled[type.id];
+      btn.className = 'chip' + (typeEnabled[type.id] ? ' on' : '');
+    });
+    typesEl.appendChild(btn);
+  });
+
+  // ─── Build inversion chips ───
+  var invEl = $('chips-inv');
+  INV.forEach(function(inv, i) {
+    var btn = document.createElement('button');
+    btn.className = 'chip' + (invEnabled[i] ? ' on' : '');
+    btn.textContent = inv.label;
+    addTap(btn, function() {
+      var active = invEnabled.filter(function(x){ return x; });
+      if (invEnabled[i] && active.length === 1) return;
+      invEnabled[i] = !invEnabled[i];
+      btn.className = 'chip' + (invEnabled[i] ? ' on' : '');
+    });
+    invEl.appendChild(btn);
+  });
+
+  nextChord();
+})();
+</script>
+</body>
+</html>
