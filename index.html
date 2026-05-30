@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Jazz Chords</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: #111;
+  color: #f0f0f0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 20px 60px;
+}
+.container { width: 100%; max-width: 480px; text-align: center; }
+
+.title {
+  font-size: 12px; font-weight: 500; color: #555;
+  letter-spacing: 4px; text-transform: uppercase; margin-bottom: 48px;
+}
+
+/* ─── Single chord ─── */
+#single-display { margin-bottom: 4px; }
+#chord-root   { font-size: 108px; font-weight: 800; line-height: 1; color: #fff; letter-spacing: -4px; }
+#chord-suffix { font-size: 50px; font-weight: 600; color: #f0a500; min-height: 60px; }
+#chord-label  { font-size: 15px; color: #555; letter-spacing: 1px; min-height: 22px; }
+#inv-badge    { font-size: 14px; color: #4fc3f7; margin-top: 6px; min-height: 20px; }
+
+/* ─── Progression ─── */
+#prog-display { display: none; margin-bottom: 4px; }
+
+#prog-row {
+  display: flex; align-items: flex-end; justify-content: center;
+  gap: 4px; flex-wrap: wrap; margin-bottom: 12px;
+}
+.prog-chord  { display: flex; flex-direction: column; align-items: center; gap: 3px; }
+.prog-degree { font-size: 11px; color: #555; letter-spacing: 2px; text-transform: uppercase; }
+.prog-name   { font-size: 30px; font-weight: 700; color: #fff; }
+.prog-arrow  { font-size: 18px; color: #2e2e2e; margin-bottom: 10px; padding: 0 2px; }
+
+/* Vertical layout for 4-chord progressions */
+#prog-row.vertical {
+  flex-direction: column; align-items: center; justify-content: center; gap: 5px;
+}
+#prog-row.vertical .prog-chord {
+  flex-direction: row; align-items: center;
+  justify-content: flex-start; gap: 20px; width: 250px;
+}
+#prog-row.vertical .prog-degree { width: 54px; text-align: right; font-size: 12px; }
+#prog-row.vertical .prog-name   { font-size: 26px; text-align: left; }
+
+#prog-key       { font-size: 15px; color: #f0a500; letter-spacing: 0.5px; margin-bottom: 4px; }
+#inv-badge-prog { font-size: 13px; color: #4fc3f7; min-height: 18px; }
+
+/* ─── Notes ─── */
+#notes-wrap { min-height: 80px; margin: 24px 0; display: flex; align-items: center; justify-content: center; }
+#notes-display {
+  font-size: 22px; color: #4fc3f7; letter-spacing: 2px; font-weight: 600;
+  white-space: pre-line; line-height: 1.7; visibility: hidden;
+}
+#notes-display.show      { visibility: visible; }
+#notes-display.prog-mode { font-size: 15px; letter-spacing: 1px; font-weight: 500; text-align: left; }
+
+/* ─── Buttons ─── */
+.btn {
+  display: block; width: 100%; padding: 22px 16px;
+  border: none; border-radius: 18px; font-size: 19px; font-weight: 600;
+  cursor: pointer; margin-bottom: 14px; font-family: inherit;
+  -webkit-appearance: none; appearance: none; outline: none;
+}
+#btn-reveal { background: #1c1c1e; color: #4fc3f7; border: 2px solid #4fc3f7; }
+#btn-next   { background: #f0a500; color: #000; }
+
+/* ─── Filters ─── */
+.filters { margin-top: 28px; width: 100%; }
+.filter-section {
+  padding-top: 18px; border-top: 1px solid #1e1e1e; margin-top: 16px;
+}
+.filter-section:first-child { margin-top: 0; border-top: none; padding-top: 0; }
+.filter-title {
+  font-size: 11px; color: #3a3a3a; letter-spacing: 3px;
+  text-transform: uppercase; margin-bottom: 12px;
+}
+.filter-subtitle {
+  font-size: 10px; color: #2c2c2c; letter-spacing: 2px;
+  text-transform: uppercase; margin: 12px 0 8px; text-align: center;
+}
+.chips { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+.chip {
+  padding: 8px 13px; border-radius: 20px; font-size: 13px; font-weight: 600;
+  cursor: pointer; border: 2px solid #2a2a2a; background: transparent; color: #555;
+  font-family: inherit; -webkit-appearance: none; appearance: none; outline: none;
+}
+.chip.on { background: #1e1e1e; border-color: #f0a500; color: #f0a500; }
+
+#counter { margin-top: 24px; font-size: 13px; color: #2a2a2a; letter-spacing: 1px; }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <div class="title">Jazz Chords</div>
+
+  <!-- Single chord -->
+  <div id="single-display">
+    <div id="chord-root">—</div>
+    <div id="chord-suffix"></div>
+    <div id="chord-label"></div>
+    <div id="inv-badge"></div>
+  </div>
+
+  <!-- Progression -->
+  <div id="prog-display">
+    <div id="prog-row"></div>
+    <div id="prog-key"></div>
+    <div id="inv-badge-prog"></div>
+  </div>
+
+  <!-- Notes (ocultas hasta tocar el botón) -->
+  <div id="notes-wrap">
+    <div id="notes-display"></div>
+  </div>
+
+  <button class="btn" id="btn-reveal">Ver notas</button>
+  <button class="btn" id="btn-next">Siguiente →</button>
+
+  <div class="filters">
+
+    <!-- Modo -->
+    <div class="filter-section">
+      <div class="filter-title">Modo</div>
+      <div class="chips">
+        <button class="chip on" id="btn-single">Acordes sueltos</button>
+        <button class="chip"    id="btn-prog">Progresiones</button>
+      </div>
+    </div>
+
+    <!-- Tipos de acorde (solo modo acorde) -->
+    <div class="filter-section" id="section-types">
+      <div class="filter-title">Tipos de acorde</div>
+      <div class="filter-subtitle">Séptimas</div>
+      <div class="chips" id="chips-7ths"></div>
+      <div class="filter-subtitle">Novenas y más</div>
+      <div class="chips" id="chips-9ths"></div>
+    </div>
+
+    <!-- Progresiones activas (solo modo progresión) -->
+    <div class="filter-section" id="section-prog-type" style="display:none">
+      <div class="filter-title">Progresiones activas</div>
+      <div class="chips" id="chips-progs"></div>
+    </div>
+
+    <!-- Inversiones (siempre visible) -->
+    <div class="filter-section">
+      <div class="filter-title">Inversiones</div>
+      <div class="chips" id="chips-inv"></div>
+    </div>
+
+  </div>
+
+  <div id="counter">Toca "Siguiente" para empezar</div>
+</div>
+
+<script>
+(function () {
+  var ROOTS = ['C','C#','D','Eb','E','F','F#','G','Ab','A','Bb','B'];
+
+  var TYPES = [
+    // ─ Séptimas (activas por defecto) ─
+    { id:'maj7',    sym:'maj7',    lbl:'Major 7th',           iv:[0,4,7,11],    g:'7', on:true  },
+    { id:'m7',      sym:'m7',      lbl:'Minor 7th',            iv:[0,3,7,10],    g:'7', on:true  },
+    { id:'dom7',    sym:'7',       lbl:'Dominant 7th',         iv:[0,4,7,10],    g:'7', on:true  },
+    { id:'m7b5',    sym:'m7b5',    lbl:'Half Diminished (ø7)', iv:[0,3,6,10],    g:'7', on:true  },
+    { id:'dim7',    sym:'dim7',    lbl:'Diminished 7th',       iv:[0,3,6,9],     g:'7', on:true  },
+    // ─ Novenas y más (desactivadas por defecto) ─
+    { id:'maj9',    sym:'maj9',    lbl:'Major 9th',            iv:[0,4,7,11,14], g:'9', on:false },
+    { id:'m9',      sym:'m9',      lbl:'Minor 9th',            iv:[0,3,7,10,14], g:'9', on:false },
+    { id:'dom9',    sym:'9',       lbl:'Dominant 9th',         iv:[0,4,7,10,14], g:'9', on:false },
+    { id:'7b9',     sym:'7b9',     lbl:'Dominant 7th ♭9',      iv:[0,4,7,10,13], g:'9', on:false },
+    { id:'7s9',     sym:'7#9',     lbl:'Dominant 7th ♯9',      iv:[0,4,7,10,15], g:'9', on:false },
+    { id:'maj7s11', sym:'maj7#11', lbl:'Lydian (maj7 ♯11)',    iv:[0,4,7,11,18], g:'9', on:false },
+  ];
+
+  var PROGRESSIONS = [
+    {
+      id:'ii-v-i-maj', name:'II-V-I may',
+      label:'II − V − I mayor',
+      degrees:['ii','V','I'],
+      types:['m7','dom7','maj7'],
+      roots:[2,7,0],
+    },
+    {
+      id:'ii-v-i-min', name:'II-V-I men',
+      label:'II − V − I menor',
+      degrees:['iiø','V7','im7'],
+      types:['m7b5','dom7','m7'],
+      roots:[2,7,0],
+    },
+    {
+      id:'i-vi-ii-v', name:'I-VI-II-V',
+      label:'I − VI − II − V',
+      degrees:['I','vi','ii','V'],
+      types:['maj7','m7','m7','dom7'],
+      roots:[0,9,2,7],
+    },
+    {
+      id:'iii-vi-ii-v', name:'III-VI-II-V',
+      label:'III − VI − II − V',
+      degrees:['iii','vi','ii','V'],
+      types:['m7','m7','m7','dom7'],
+      roots:[4,9,2,7],
+    },
+    {
+      id:'i-iv-ii-v', name:'I-IV-II-V',
+      label:'I − IV − II − V',
+      degrees:['I','IV','ii','V'],
+      types:['maj7','maj7','m7','dom7'],
+      roots:[0,5,2,7],
+    },
+  ];
+
+  var INV = [
+    { label:'Raíz', badge:'' },
+    { label:'1ª',   badge:'1ª inversión' },
+    { label:'2ª',   badge:'2ª inversión' },
+    { label:'3ª',   badge:'3ª inversión' },
+  ];
+
+  // ─── Estado ───
+  var typeEnabled = {};
+  TYPES.forEach(function(t){ typeEnabled[t.id] = t.on; });
+
+  var progEnabled = {};
+  PROGRESSIONS.forEach(function(p){ progEnabled[p.id] = true; });
+
+  var invEnabled = [true, false, false, false];
+  var progMode   = false;
+  var notesShown = false;
+  var current    = null;
+  var count      = 0;
+
+  function $(id)        { return document.getElementById(id); }
+  function getType(id)  { return TYPES.find(function(t){ return t.id === id; }); }
+  function pick(arr)    { return arr[Math.floor(Math.random() * arr.length)]; }
+
+  function rotate(notes, n) {
+    var r = notes.slice();
+    for (var i = 0; i < n; i++) r.push(r.shift());
+    return r;
+  }
+
+  function pickInv() {
+    var pool = [];
+    invEnabled.forEach(function(on, i){ if (on) pool.push(i); });
+    return pick(pool);
+  }
+
+  function chordNotes(typeId, ri) {
+    return getType(typeId).iv.map(function(i){ return ROOTS[(ri + i) % 12]; });
+  }
+
+  // ─── Generar acorde suelto ───
+  function generateSingle() {
+    var pool = TYPES.filter(function(t){ return typeEnabled[t.id]; });
+    var type = pick(pool);
+    var ri   = Math.floor(Math.random() * 12);
+    var inv  = pickInv();
+    var notes = rotate(chordNotes(type.id, ri), inv);
+
+    current = { mode:'single', notesText: notes.join('  ·  ') };
+
+    $('chord-root').textContent    = ROOTS[ri];
+    $('chord-suffix').textContent  = type.sym;
+    $('chord-label').textContent   = type.lbl;
+    $('inv-badge').textContent     = INV[inv].badge;
+    $('notes-display').textContent = current.notesText;
+    $('notes-display').className   = '';
+  }
+
+  // ─── Generar progresión ───
+  function generateProg() {
+    var pool = PROGRESSIONS.filter(function(p){ return progEnabled[p.id]; });
+    var prog = pick(pool);
+    var ki   = Math.floor(Math.random() * 12);
+    var inv  = pickInv();
+    var isVert = prog.roots.length >= 4;
+
+    var chords = prog.types.map(function(tid, idx) {
+      var ri    = (ki + prog.roots[idx]) % 12;
+      var notes = rotate(chordNotes(tid, ri), inv);
+      return { name: ROOTS[ri] + getType(tid).sym, degree: prog.degrees[idx], notes: notes };
+    });
+
+    current = {
+      mode: 'prog',
+      notesText: chords.map(function(c){ return c.name + ':  ' + c.notes.join(' · '); }).join('\n'),
+    };
+
+    var row = $('prog-row');
+    row.innerHTML = '';
+    row.className = isVert ? 'vertical' : '';
+
+    chords.forEach(function(c, i) {
+      if (!isVert && i > 0) {
+        var a = document.createElement('span');
+        a.className = 'prog-arrow'; a.textContent = '→'; row.appendChild(a);
+      }
+      var s = document.createElement('div');
+      s.className = 'prog-chord';
+      s.innerHTML = '<span class="prog-degree">' + c.degree + '</span>'
+                  + '<span class="prog-name">'   + c.name   + '</span>';
+      row.appendChild(s);
+    });
+
+    $('prog-key').textContent       = prog.label + ' · ' + ROOTS[ki];
+    $('inv-badge-prog').textContent = INV[inv].badge;
+    $('notes-display').textContent  = current.notesText;
+    $('notes-display').className    = 'prog-mode';
+  }
+
+  // ─── Siguiente ───
+  function nextChord() {
+    count++;
+    notesShown = false;
+    $('btn-reveal').textContent = 'Ver notas';
+    progMode ? generateProg() : generateSingle();
+    $('counter').textContent = 'Acorde #' + count;
+  }
+
+  // ─── Ver / ocultar notas ───
+  function toggleNotes() {
+    if (!current) return;
+    notesShown = !notesShown;
+    var pm  = current.mode === 'prog';
+    var cls = [notesShown ? 'show' : '', pm ? 'prog-mode' : ''].filter(Boolean).join(' ');
+    $('notes-display').className = cls;
+    $('btn-reveal').textContent  = notesShown ? 'Ocultar notas' : 'Ver notas';
+  }
+
+  // ─── Cambio de modo ───
+  function setMode(prog) {
+    progMode = prog;
+    $('single-display').style.display    = prog ? 'none'  : 'block';
+    $('prog-display').style.display      = prog ? 'block' : 'none';
+    $('section-types').style.display     = prog ? 'none'  : 'block';
+    $('section-prog-type').style.display = prog ? 'block' : 'none';
+    $('btn-single').className = prog ? 'chip'    : 'chip on';
+    $('btn-prog').className   = prog ? 'chip on' : 'chip';
+    nextChord();
+  }
+
+  // ─── Helper de toque ───
+  function addTap(el, fn) {
+    el.addEventListener('touchend', function(e){ e.preventDefault(); fn(); }, { passive:false });
+    el.addEventListener('click', fn);
+  }
+
+  // ─── Botones principales ───
+  addTap($('btn-next'),   nextChord);
+  addTap($('btn-reveal'), toggleNotes);
+  addTap($('btn-single'), function(){ if (progMode)  setMode(false); });
+  addTap($('btn-prog'),   function(){ if (!progMode) setMode(true);  });
+
+  // ─── Chips de tipos de acorde ───
+  function buildTypeChip(container, type) {
+    var btn = document.createElement('button');
+    btn.className = 'chip' + (typeEnabled[type.id] ? ' on' : '');
+    btn.textContent = type.sym;
+    addTap(btn, function() {
+      var active = TYPES.filter(function(t){ return typeEnabled[t.id]; });
+      if (typeEnabled[type.id] && active.length === 1) return;
+      typeEnabled[type.id] = !typeEnabled[type.id];
+      btn.className = 'chip' + (typeEnabled[type.id] ? ' on' : '');
+    });
+    container.appendChild(btn);
+  }
+
+  TYPES.filter(function(t){ return t.g === '7'; }).forEach(function(t){ buildTypeChip($('chips-7ths'), t); });
+  TYPES.filter(function(t){ return t.g === '9'; }).forEach(function(t){ buildTypeChip($('chips-9ths'), t); });
+
+  // ─── Chips de progresiones ───
+  PROGRESSIONS.forEach(function(prog) {
+    var btn = document.createElement('button');
+    btn.className = 'chip on';
+    btn.textContent = prog.name;
+    addTap(btn, function() {
+      var active = PROGRESSIONS.filter(function(p){ return progEnabled[p.id]; });
+      if (progEnabled[prog.id] && active.length === 1) return;
+      progEnabled[prog.id] = !progEnabled[prog.id];
+      btn.className = 'chip' + (progEnabled[prog.id] ? ' on' : '');
+    });
+    $('chips-progs').appendChild(btn);
+  });
+
+  // ─── Chips de inversiones ───
+  INV.forEach(function(inv, i) {
+    var btn = document.createElement('button');
+    btn.className = 'chip' + (invEnabled[i] ? ' on' : '');
+    btn.textContent = inv.label;
+    addTap(btn, function() {
+      var active = invEnabled.filter(function(x){ return x; });
+      if (invEnabled[i] && active.length === 1) return;
+      invEnabled[i] = !invEnabled[i];
+      btn.className = 'chip' + (invEnabled[i] ? ' on' : '');
+    });
+    $('chips-inv').appendChild(btn);
+  });
+
+  nextChord();
+})();
+</script>
+</body>
+</html>
